@@ -4,7 +4,7 @@
 using namespace cv;
 using namespace std;
 
-int main( int argc, char** argv ) {
+int main() {
     // Read and open video
     string path = "C:/Users/emper/OneDrive/Desktop/V1.avi";
     VideoCapture cap(path);
@@ -19,10 +19,10 @@ int main( int argc, char** argv ) {
     int highH = 179;
 
     // peak detection values (bins, value)
-    int b1 = 0, b2= 0, b1c = 0, b2c = 0;
+    int b = 0, b1 = 0, b2= 0, b1c = 0, b2c = 0;
 
-    // boolean for detecting if first frame for droplet detection
-    bool done = false;
+    // boolean for detecting if first frame
+    bool first = false;
 
     // values for counting num of droplets
     int num = 0, prevNum = 0, countdown = 5;
@@ -30,66 +30,85 @@ int main( int argc, char** argv ) {
     // pause and first frame for droplet count booleans
     bool firstCount = false, pause = false;
 
+
+    // for first frame
+
+    // read frame
+    Mat img;
+    cap.read(img);
+    if (img.empty()) {
+        cout << "Video has finished" << endl;
+        return 0;
+    }
+
+    // convert image to HSV
+    Mat imgHSV;
+    vector<Mat> hsvSplit;
+    cvtColor(img, imgHSV, COLOR_BGR2HSV);
+    split(imgHSV, hsvSplit);
+
+    // settings for histogram
+    int histSize = 90;
+    float range[] = {0, 180};
+    const float* histRange = {range};
+    bool uniform = true, accumulate = false;
+
+    // calculate histogram
+    Mat hist;
+    calcHist(&hsvSplit[0], 1, 0, Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
+    Mat histImg(400,512, CV_8UC3, Scalar(0,0,0));
+
+    // blur histogram for smoothness
+    GaussianBlur(hist, hist, Size(11,11), 0,0,BORDER_REPLICATE);
+
+    //  determine peaks of histogram
+    for (int i = 1; i < histSize; i++) {
+        // gets the previous, current, and next values
+        int prev = cvRound(hist.at<float>(i-1)),
+                cur = cvRound(hist.at<float>(i)),
+                next = cvRound(hist.at<float>(i+1));
+
+        // if the current value is greater than the previous and next
+        if (cur > prev && cur > next) {
+            if (cur > b1c) { // if it is the highest overall
+                b2 = b1;
+                b1 = i;
+                b2c = b1c;
+                b1c = cur;
+            } else if (cur > b2c) { // if it is the second highest
+                b2 = i;
+                b2c = cur;
+            }
+        }
+    }
+
+    // if bin 2 is close to black, use the other bin
+    b = b2 < 15 ? b1 : b2;
+
+
     //main loop
     while (true)  {
-        // read frame
-        Mat img;
-        bool success = cap.read(img);
-        if (img.empty()) {
-            cout << "Video has finished" << endl;
-            break;
+        if (!first) {
+            // read frame
+            cap.read(img);
+            if (img.empty()) {
+                cout << "Video has finished" << endl;
+                break;
+            }
+
+            // convert image to HSV
+            cvtColor(img, imgHSV, COLOR_BGR2HSV);
+            split(imgHSV, hsvSplit);
         }
+
+        first = true;
+
 
         // DROPLET DETECTION
 
-        // convert image to HSV
-        Mat imgHSV;
-        vector<Mat> hsvSplit;
-        cvtColor(img, imgHSV, COLOR_BGR2HSV);
-        split(imgHSV, hsvSplit);
-
-        // settings for histogram
-        int histSize = 128;
-        float range[] = {0, 180};
-        const float* histRange = {range};
-        bool uniform = true, accumulate = false;
-
-        // calculate histogram
-        Mat hist;
-        calcHist(&hsvSplit[0], 1, 0, Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
-        Mat histImg(400,512, CV_8UC3, Scalar(0,0,0));
-
-        // blur histogram for smoothness
-        GaussianBlur(hist, hist, Size(11,11), 0,0,BORDER_REPLICATE);
-
-        //  determine peaks of histogram
-        for (int i = 1; i < histSize; i++) {
-            if (!done) { // checks if first frame
-                // gets the previous, current, and next values
-                int prev = cvRound(hist.at<float>(i-1)),
-                        cur = cvRound(hist.at<float>(i)),
-                        next = cvRound(hist.at<float>(i+1));
-
-                // if the current value is greater than the previous and next
-                if (cur > prev && cur > next) {
-                    if (cur > b1c) { // if it is the highest overall
-                        b2 = b1;
-                        b1 = i;
-                        b2c = b1c;
-                        b1c = cur;
-                    } else if (cur > b2c) { // if it is the second highest
-                        b2 = i;
-                        b2c = cur;
-                    }
-                }
-            }
-        }
-
-        done = true; // stops after first frame
-
         // sets range for hue detection
-        lowH = b2 - 15;
-        highH = b2 + 10;
+        lowH = b - 10;
+        highH = b + 10;
 
         // equalises value of image
         equalizeHist(hsvSplit[2],hsvSplit[2]);
