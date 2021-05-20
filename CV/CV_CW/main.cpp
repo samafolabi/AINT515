@@ -25,7 +25,7 @@ int main() {
     bool first = false;
 
     // values for counting num of droplets
-    int num = 0, prevNum = 0, countdown = 5;
+    int num = 0, prevNum = 0, countdown = 20;
 
     // pause and first frame for droplet count booleans
     bool firstCount = false, pause = false;
@@ -40,6 +40,8 @@ int main() {
         cout << "Video has finished" << endl;
         return 0;
     }
+
+    int img_width = img.cols;
 
     // convert image to HSV
     Mat imgHSV;
@@ -88,7 +90,7 @@ int main() {
 
     //main loop
     while (true)  {
-        if (!first) {
+        if (first) {
             // read frame
             cap.read(img);
             if (img.empty()) {
@@ -176,14 +178,14 @@ int main() {
             // COUNTING DROPLETS
 
             // if it is the first frame, it checks if the droplet is left of the needle
-            if (keypoints[i].pt.x <= 512 && !firstCount) {
+            if (keypoints[i].pt.x <= img_width/2 && !firstCount) {
                 num += 1;
             }
 
             // if it is not the first frame, and not paused,
             // it checks if droplet is passing the center of the screen
             // if it is, it increments and waits for the droplet to pass
-            if (!pause && firstCount && (keypoints[i].pt.x >= 512 && keypoints[i].pt.x <= 522)) {
+            if (!pause && firstCount && (keypoints[i].pt.x >= (img_width/2)-20 && keypoints[i].pt.x <= (img_width/2)+20)) {
                 num += 1;
                 pause = true;
             }
@@ -195,9 +197,9 @@ int main() {
         // counts down for the pause
         if (pause) {
             countdown--;
-            if (countdown == 0) {
+            if (countdown <= 0) {
                 pause = false;
-                countdown = 5;
+                countdown = 20;
             }
         }
 
@@ -209,7 +211,7 @@ int main() {
 
 
 
-        // OUTER WEAP
+        // OUTER WRAP
 
         // converts image to grayscale and applies Hough Circle Transform
         Mat imgGray;

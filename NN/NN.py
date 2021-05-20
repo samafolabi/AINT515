@@ -18,7 +18,7 @@ from keras.models import load_model
 np.random.seed(9)
 
 # model settings
-nb_epoch = 25
+nb_epoch = 100
 num_classes = 10
 batch_size = 20
 
@@ -73,7 +73,7 @@ model.summary()
 
 
 # optimizer for model
-opt = keras.optimizers.RMSprop(lr=0.0001, decay=1e-7)
+opt = keras.optimizers.RMSprop(lr=0.0001, decay=1e-5)
 model.compile(loss='categorical_crossentropy',
               optimizer=opt,
               metrics=['accuracy'])
@@ -88,7 +88,6 @@ testData /= 255
 history = model.fit(trainData,trainLabel,
                     validation_data=(testData, testLabel),
                     batch_size=batch_size,epochs=nb_epoch, verbose=1)
-
 score = model.evaluate(testData, testLabel, verbose=1)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])
@@ -122,7 +121,7 @@ print('Saved trained model at %s ' % model_path)
 model = load_model(model_path) 
 
 for i in range(1,16):
-  pic_name = str(i)+'.jpg'
+  pic_name = 'Images for NN/'+str(i)+'.jpg'
   im = Image.open(pic_name)
   im = np.array(im).reshape(1, 32, 32, 3)
   
